@@ -1,0 +1,111 @@
+datasource db {
+    provider = "cockroachdb"
+    url      = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+///////////////
+//  ENUMS
+///////////////
+
+enum TransactionType {
+    PURCHASE
+    USAGE
+}
+
+enum TransactionStatus {
+    PENDING
+    COMPLETED
+    REFUNDED
+}
+
+enum RefundStatus {
+    PENDING
+    APPROVED
+    REJECTED
+}
+
+///////////////
+//  MODELS
+///////////////
+
+model User {
+    id      String   @id @default(uuid())
+    email   String   @unique
+    name    String?
+    image   String?
+    credits Int      @default(60)
+    /// Using a string array for user roles.
+    /// CockroachDB supports Postgres-like arrays, so this is valid.
+    roles   String[]
+
+    // Relations
+    transactions Transaction[]
+    cvs          CV[]
+    coverLetters CoverLetter[]
+    refunds      Refund[]
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+    id          String            @id @default(uuid())
+    type        TransactionType
+    amount      Int
+    status      TransactionStatus
+    description String?
+
+    // Relations
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    Refund    Refund[]
+}
+
+model CV {
+    id               String  @id @default(uuid())
+    originalFilePath String?
+    generatedContent String?
+
+    // Relation
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model CoverLetter {
+    id               String @id @default(uuid())
+    position         String
+    companyName      String
+    generatedContent String
+
+    // Relation
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Refund {
+    id     String       @id @default(uuid())
+    reason String
+    status RefundStatus @default(PENDING)
+
+    // Relations
+    userId        String
+    user          User        @relation(fields: [userId], references: [id])
+    transactionId String
+    transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
